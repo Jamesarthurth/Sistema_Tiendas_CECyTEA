@@ -11,7 +11,7 @@ from openpyxl.utils import get_column_letter
 st.set_page_config(page_title="Control de Tiendas Escolares", page_icon="📊", layout="wide")
 
 TARIFAS_BASE = "tarifas_base.xlsx"
-VERSION_REPORTE = "2.0 Local"
+VERSION_REPORTE = "2.0"
 
 
 def aplicar_fifo(pagos, cuotas_mes):
@@ -88,29 +88,28 @@ def generar_reporte(df, cuotas):
     tiendas["Pago_EE"] = tiendas["OTROS INGRESOS (ENERGIA ELEC)"].fillna(0)
 
     def normalizar_tienda(nombre):
-    nombre_original = str(nombre).strip().upper()
+        nombre_original = str(nombre).strip().upper()
 
-    # Excepciones específicas antes de limpiar
-    if nombre_original == "CECYTEA TIENDA ESCOLAR":
-        return "JESUS MARIA"
+        # Excepciones específicas antes de limpiar
+        if nombre_original == "CECYTEA TIENDA ESCOLAR":
+            return "JESUS MARIA"
 
-    if nombre_original == "EMS JESUS MARIA TIENDA ESCOLAR":
-        return "EMS JESUS MARIA"
+        if nombre_original == "EMS JESUS MARIA TIENDA ESCOLAR":
+            return "EMS JESUS MARIA"
 
-    # Limpieza general
-    nombre_limpio = (
-        nombre_original
-        .replace("TIENDA ESCOLAR", "")
-        .replace("CECYTEA", "")
-        .replace("CECYT", "")
-        .replace("EMS", "")
-        .strip()
-    )
+        # Limpieza general
+        nombre_limpio = (
+            nombre_original
+            .replace("TIENDA ESCOLAR", "")
+            .replace("CECYTEA", "")
+            .replace("CECYT", "")
+            .replace("EMS", "")
+            .strip()
+        )
 
-    return nombre_limpio
+        return nombre_limpio
 
-
-tiendas["Tienda"] = tiendas["Nombre(s)"].apply(normalizar_tienda)
+    tiendas["Tienda"] = tiendas["Nombre(s)"].apply(normalizar_tienda)
 
     movimientos_tiendas = tiendas[(tiendas["Pago_Cuota"] > 0) | (tiendas["Pago_EE"] > 0)].copy()
 
@@ -641,7 +640,7 @@ st.markdown(
     """
     <div class="footer">
         <b>CECyTEA | Sistema de Control de Tiendas Escolares</b><br>
-        Versión 2.0 local · Reportes generados con método FIFO
+        Versión 2.0 · Reportes generados con método FIFO
     </div>
     """,
     unsafe_allow_html=True
