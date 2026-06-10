@@ -87,15 +87,30 @@ def generar_reporte(df, cuotas):
     tiendas["Pago_Cuota"] = tiendas[columnas_cuota].sum(axis=1, skipna=True)
     tiendas["Pago_EE"] = tiendas["OTROS INGRESOS (ENERGIA ELEC)"].fillna(0)
 
-    tiendas["Tienda"] = (
-        tiendas["Nombre(s)"]
-        .astype(str)
-        .str.replace("TIENDA ESCOLAR", "", case=False, regex=False)
-        .str.replace("CECYTEA", "", case=False, regex=False)
-        .str.replace("CECYT", "", case=False, regex=False)
-        .str.replace("EMS", "", case=False, regex=False)
-        .str.strip()
+    def normalizar_tienda(nombre):
+    nombre_original = str(nombre).strip().upper()
+
+    # Excepciones específicas antes de limpiar
+    if nombre_original == "CECYTEA TIENDA ESCOLAR":
+        return "JESUS MARIA"
+
+    if nombre_original == "EMS JESUS MARIA TIENDA ESCOLAR":
+        return "EMS JESUS MARIA"
+
+    # Limpieza general
+    nombre_limpio = (
+        nombre_original
+        .replace("TIENDA ESCOLAR", "")
+        .replace("CECYTEA", "")
+        .replace("CECYT", "")
+        .replace("EMS", "")
+        .strip()
     )
+
+    return nombre_limpio
+
+
+tiendas["Tienda"] = tiendas["Nombre(s)"].apply(normalizar_tienda)
 
     movimientos_tiendas = tiendas[(tiendas["Pago_Cuota"] > 0) | (tiendas["Pago_EE"] > 0)].copy()
 
@@ -124,7 +139,7 @@ def generar_reporte(df, cuotas):
         "EA": "EMS JESUS MARÍA",
         "VILLAMONTAÑA": 'VILLA MONTAÑA "NUEVO"',
         "CALVILLO": "CALVILLO",
-        "": "EMS JESUS MARÍA",
+        "EMS JESUS MARIA": "EMS JESUS MARÍA",
     }
     movimientos_tiendas["Plantel"] = movimientos_tiendas["Tienda"].map(mapa_nombres)
     sin_emparejar = movimientos_tiendas[movimientos_tiendas["Plantel"].isna()].copy()
