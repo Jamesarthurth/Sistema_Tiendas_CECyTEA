@@ -479,6 +479,18 @@ with st.sidebar:
     st.markdown("#### 📁 Cuotas base activas")
     st.info(f"Archivo activo: `{TARIFAS_BASE}`")
 
+    # Botón para descargar machote de cuotas
+    try:
+        with open(TARIFAS_BASE, "rb") as archivo_machote:
+            st.download_button(
+                label="📥 Descargar machote de cuotas",
+                data=archivo_machote,
+                file_name="Machote_Cuotas.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+    except FileNotFoundError:
+        st.error("No se encontró el archivo de cuotas base.")
+
     actualizar_cuotas = st.file_uploader(
         "Actualizar archivo de cuotas base",
         type=["xlsx"],
