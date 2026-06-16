@@ -11,7 +11,7 @@ from openpyxl.utils import get_column_letter
 st.set_page_config(page_title="Control de Tiendas Escolares", page_icon="📊", layout="wide")
 
 TARIFAS_BASE = "tarifas_base.xlsx"
-VERSION_REPORTE = "2.0"
+VERSION_REPORTE = "2.1"
 
 
 def aplicar_fifo(pagos, cuotas_mes):
@@ -65,8 +65,45 @@ def celda_monto_fecha(pagado, fecha, estado):
     return f"{monto_txt}\n{fecha_txt}"
 
 
+def detectar_meses_desde_cuotas(cuotas):
+    """
+    Detecta los meses del machote de cuotas.
+    La estructura esperada es:
+    columna 3 = primer mes cuota
+    columna 4 = primer mes EE
+    columna 5 = segundo mes cuota
+    columna 6 = segundo mes EE
+    y así sucesivamente.
+
+    Ejemplo:
+    Feb, Mar, Abr, May, Jun
+    o
+    Ago, Sep, Oct, Nov, Dic
+    """
+    meses_detectados = []
+
+    for col in range(3, cuotas.shape[1], 2):
+        valor = cuotas.iloc[0, col]
+
+        if pd.isna(valor):
+            continue
+
+        mes = str(valor).strip()
+
+        if mes and mes.lower() != "nan" and mes not in meses_detectados:
+            meses_detectados.append(mes)
+
+    if not meses_detectados:
+        raise ValueError(
+            "No se pudieron detectar meses en el archivo de cuotas. "
+            "Revisa que los meses estén en la fila superior del machote."
+        )
+
+    return meses_detectados
+
+
 def generar_reporte(df, cuotas):
-    meses = ["Feb", "Mar", "Abr", "May", "Jun"]
+    meses = detectar_meses_desde_cuotas(cuotas)
 
     columnas_necesarias = ["Nombre(s)", "  Fecha", "OTROS INGRESOS (ENERGIA ELEC)"]
     faltantes = [c for c in columnas_necesarias if c not in df.columns]
@@ -148,14 +185,21 @@ def generar_reporte(df, cuotas):
         plantel = cuotas.iloc[fila, 1]
         if pd.isna(plantel):
             continue
-        datos_cuotas.append({
-            "Plantel": plantel,
-            "Feb_Cuota": cuotas.iloc[fila, 3], "Feb_EE": cuotas.iloc[fila, 4],
-            "Mar_Cuota": cuotas.iloc[fila, 5], "Mar_EE": cuotas.iloc[fila, 6],
-            "Abr_Cuota": cuotas.iloc[fila, 7], "Abr_EE": cuotas.iloc[fila, 8],
-            "May_Cuota": cuotas.iloc[fila, 9], "May_EE": cuotas.iloc[fila, 10],
-            "Jun_Cuota": cuotas.iloc[fila, 11], "Jun_EE": cuotas.iloc[fila, 12],
-        })
+        registro = {"Plantel": plantel}
+
+        for i, mes in enumerate(meses):
+            col_cuota = 3 + (i * 2)
+            col_ee = 4 + (i * 2)
+
+            if col_ee >= cuotas.shape[1]:
+                raise ValueError(
+                    f"El machote de cuotas no tiene columnas suficientes para el mes {mes}."
+                )
+
+            registro[f"{mes}_Cuota"] = cuotas.iloc[fila, col_cuota]
+            registro[f"{mes}_EE"] = cuotas.iloc[fila, col_ee]
+
+        datos_cuotas.append(registro)
     cuotas_maestra = pd.DataFrame(datos_cuotas)
 
     reporte_filas = []
@@ -221,13 +265,13 @@ def generar_reporte(df, cuotas):
     planteles_con_adeudo = (reporte_adeudos["Adeudo Total"] > 0).sum()
     resumen = pd.DataFrame({
         "Indicador": [
-            "Versión del reporte", "Fecha de generación", "Total de planteles",
-            "Planteles al corriente", "Planteles con adeudo", "Porcentaje al corriente",
-            "Adeudo total", "Adeudo cuota", "Adeudo EE"
+            "Versión del reporte", "Fecha de generación", "Meses del reporte",
+            "Total de planteles", "Planteles al corriente", "Planteles con adeudo",
+            "Porcentaje al corriente", "Adeudo total", "Adeudo cuota", "Adeudo EE"
         ],
         "Valor": [
-            VERSION_REPORTE, fecha_mexico, total_planteles, planteles_al_corriente,
-            planteles_con_adeudo,
+            VERSION_REPORTE, fecha_mexico, ", ".join(meses), total_planteles,
+            planteles_al_corriente, planteles_con_adeudo,
             planteles_al_corriente / total_planteles if total_planteles else 0,
             reporte_adeudos["Adeudo Total"].sum(),
             reporte_adeudos["Adeudo Cuota"].sum(),
@@ -303,8 +347,9 @@ def generar_reporte(df, cuotas):
         ws_ejecutivo.row_dimensions[fila].height = 40
     ws_ejecutivo.column_dimensions["A"].width = 24
     ws_ejecutivo.column_dimensions["B"].width = 12
-    for col in ["C", "D", "E", "F", "G"]:
-        ws_ejecutivo.column_dimensions[col].width = 14
+    for col_idx in range(3, ws_ejecutivo.max_column + 1):
+        col_letter = get_column_letter(col_idx)
+        ws_ejecutivo.column_dimensions[col_letter].width = 14
 
     ws_adeudos = wb["Adeudos"]
     for row in ws_adeudos.iter_rows(min_row=2):
@@ -591,14 +636,16 @@ if archivo_global is not None:
     try:
         df = pd.read_excel(archivo_global, sheet_name="2024", header=1)
         cuotas = pd.read_excel(TARIFAS_BASE, sheet_name=0, header=None)
+        meses_detectados = detectar_meses_desde_cuotas(cuotas)
 
         st.success("Archivo GLOBAL y cuotas base leídos correctamente.")
+        st.info("Meses detectados en el machote de cuotas: " + ", ".join(meses_detectados))
 
         st.markdown('<div class="section-title">Estado del sistema</div>', unsafe_allow_html=True)
         col1, col2, col3 = st.columns(3)
         col1.metric("Registros GLOBAL", f"{df.shape[0]:,}")
         col2.metric("Columnas GLOBAL", df.shape[1])
-        col3.metric("Cuotas base", f"{cuotas.shape[0]} filas")
+        col3.metric("Meses detectados", len(meses_detectados))
 
         st.markdown('<div class="section-title">2. Generar reporte</div>', unsafe_allow_html=True)
 
@@ -652,7 +699,7 @@ st.markdown(
     """
     <div class="footer">
         <b>CECyTEA | Sistema de Control de Tiendas Escolares</b><br>
-        Versión 2.0 · Reportes generados con método FIFO
+        Versión 2.1 · Meses dinámicos desde machote · Método FIFO
     </div>
     """,
     unsafe_allow_html=True
