@@ -165,7 +165,6 @@ def generar_reporte(df, cuotas):
             "Jun_EE": cuotas.iloc[fila, 11],
         })
 
-cuotas_maestra = pd.DataFrame(datos_cuotas)
     cuotas_maestra = pd.DataFrame(datos_cuotas)
 
     reporte_filas = []
