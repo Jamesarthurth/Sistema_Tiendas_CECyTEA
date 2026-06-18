@@ -144,18 +144,28 @@ def generar_reporte(df, cuotas):
     sin_emparejar = movimientos_tiendas[movimientos_tiendas["Plantel"].isna()].copy()
 
     datos_cuotas = []
-    for fila in range(2, len(cuotas), 2):
-        plantel = cuotas.iloc[fila, 1]
+
+    for fila in range(2, len(cuotas)):
+        plantel = cuotas.iloc[fila, 0]
+
         if pd.isna(plantel):
             continue
+    
         datos_cuotas.append({
             "Plantel": plantel,
-            "Feb_Cuota": cuotas.iloc[fila, 3], "Feb_EE": cuotas.iloc[fila, 4],
-            "Mar_Cuota": cuotas.iloc[fila, 5], "Mar_EE": cuotas.iloc[fila, 6],
-            "Abr_Cuota": cuotas.iloc[fila, 7], "Abr_EE": cuotas.iloc[fila, 8],
-            "May_Cuota": cuotas.iloc[fila, 9], "May_EE": cuotas.iloc[fila, 10],
-            "Jun_Cuota": cuotas.iloc[fila, 11], "Jun_EE": cuotas.iloc[fila, 12],
+            "Feb_Cuota": cuotas.iloc[fila, 2],
+            "Feb_EE": cuotas.iloc[fila, 3],
+            "Mar_Cuota": cuotas.iloc[fila, 4],
+            "Mar_EE": cuotas.iloc[fila, 5],
+            "Abr_Cuota": cuotas.iloc[fila, 6],
+            "Abr_EE": cuotas.iloc[fila, 7],
+            "May_Cuota": cuotas.iloc[fila, 8],
+            "May_EE": cuotas.iloc[fila, 9],
+            "Jun_Cuota": cuotas.iloc[fila, 10],
+            "Jun_EE": cuotas.iloc[fila, 11],
         })
+
+cuotas_maestra = pd.DataFrame(datos_cuotas)
     cuotas_maestra = pd.DataFrame(datos_cuotas)
 
     reporte_filas = []
